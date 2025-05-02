@@ -1,26 +1,33 @@
 import 'react-native-url-polyfill/auto';
 import React, { useState, useEffect } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, LogBox } from 'react-native';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Font from 'expo-font';
-import { MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
+import { MaterialIcons, FontAwesome5, FontAwesome } from '@expo/vector-icons';
 
 // Import store and navigation
 import { store, persistor } from './src/store';
 import AppNavigator from './src/navigation/AppNavigator';
 import { navigationRef } from './src/navigation/NavigationService';
 
+// Ignore specific warnings if needed
+LogBox.ignoreLogs([
+  'VirtualizedLists should never be nested',
+  'Warning: componentWillReceiveProps has been renamed',
+  'Warning: componentWillMount has been renamed',
+]);
 
 // Loading screen component
 const LoadingScreen = () => (
   <View style={styles.loadingContainer}>
     <View style={styles.logoContainer}>
-      <FontAwesome5 name="coins" size={50} color="#3498DB" />
+      <FontAwesome5 name="coins" size={60} color="#3498DB" />
       <Text style={styles.appTitle}>Poker Settlement</Text>
+      <Text style={styles.appSubtitle}>Settle poker debts with ease</Text>
     </View>
     <ActivityIndicator size="large" color="#3498DB" style={styles.loader} />
     <Text style={styles.loadingText}>Loading...</Text>
@@ -38,7 +45,8 @@ export default function App() {
         // Load fonts
         await Font.loadAsync({
           ...MaterialIcons.font,
-          ...FontAwesome5.font
+          ...FontAwesome5.font,
+          ...FontAwesome.font
         });
         
         // Simulate minimal loading time to avoid flicker
@@ -96,10 +104,15 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   appTitle: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#2C3E50',
     marginTop: 15,
+  },
+  appSubtitle: {
+    fontSize: 16,
+    color: '#7F8C8D',
+    marginTop: 5,
   },
   loader: {
     marginVertical: 20,

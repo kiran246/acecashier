@@ -23,6 +23,7 @@ import { loadPlayers, savePlayers } from '../api/storage';
 import { Swipeable } from 'react-native-gesture-handler';
 import { MaterialIcons, FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import analyticsUtils from '../utils/analyticsUtils';
 
 const PlayerScreen = ({ navigation }) => {
   const dispatch = useDispatch();
@@ -35,7 +36,7 @@ const PlayerScreen = ({ navigation }) => {
   const [sortBy, setSortBy] = useState('name'); // 'name' or 'date'
   const [sortOrder, setSortOrder] = useState('asc'); // 'asc' or 'desc'
   const [selectedPlayerIds, setSelectedPlayerIds] = useState([]);
-  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  const [isMultiSelectActive, setIsMultiSelectActive] = useState(false);
   
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -185,7 +186,7 @@ const PlayerScreen = ({ navigation }) => {
               dispatch(deletePlayer(id));
             });
             setSelectedPlayerIds([]);
-            setIsMultiSelectMode(false);
+            setIsMultiSelectActive(false);
           },
           style: 'destructive'
         }
@@ -197,6 +198,10 @@ const PlayerScreen = ({ navigation }) => {
     setEditingId(id);
     setEditingName(name);
   };
+  
+  const handleViewAnalytics = (player) => {
+    navigation.navigate('PlayerAnalytics', { player });
+  };
 
   const togglePlayerSelection = (id) => {
     if (selectedPlayerIds.includes(id)) {
@@ -207,16 +212,44 @@ const PlayerScreen = ({ navigation }) => {
   };
 
   const toggleMultiSelectMode = () => {
-    setIsMultiSelectMode(!isMultiSelectMode);
-    if (isMultiSelectMode) {
+    setIsMultiSelectActive(!isMultiSelectActive);
+    if (isMultiSelectActive) {
       setSelectedPlayerIds([]);
     }
   };
 
-  const handleLongPress = (id) => {
-    if (!isMultiSelectMode) {
-      setIsMultiSelectMode(true);
-      setSelectedPlayerIds([id]);
+  const handlePlayerLongPress = (player) => {
+    if (enableMultiSelect && !isMultiSelectActive) {
+      setIsMultiSelectActive(true);
+      setSelectedPlayerIds([player.id]);
+      if (onSelectionChange) {
+        onSelectionChange([player.id]);
+      }
+    } else {
+      // Show options when long press
+      Alert.alert(
+        'Player Options',
+        `Choose an action for ${player.name}`,
+        [
+          {
+            text: 'Edit',
+            onPress: () => startEditing(player.id, player.name),
+          },
+          {
+            text: 'View Analytics',
+            onPress: () => handleViewAnalytics(player),
+          },
+          {
+            text: 'Delete',
+            onPress: () => handleDeletePlayer(player.id),
+            style: 'destructive',
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+        ]
+      );
     }
   };
 
@@ -277,6 +310,15 @@ const PlayerScreen = ({ navigation }) => {
     return (
       <View style={styles.swipeableActions}>
         <TouchableOpacity
+          style={[styles.swipeableButton, styles.analyticsButton]}
+          onPress={() => {
+            const player = players.find(p => p.id === id);
+            if (player) handleViewAnalytics(player);
+          }}
+        >
+          <MaterialIcons name="analytics" size={24} color="white" />
+        </TouchableOpacity>
+        <TouchableOpacity
           style={[styles.swipeableButton, styles.editButton]}
           onPress={() => {
             const player = players.find(p => p.id === id);
@@ -295,7 +337,7 @@ const PlayerScreen = ({ navigation }) => {
     );
   };
 
-  const renderPlayerItem = ({ item }) => (
+  const renderPlayerItem = ({ item, index }) => (
     <Animated.View
       style={[
         styles.animatedContainer,
@@ -344,18 +386,18 @@ const PlayerScreen = ({ navigation }) => {
       ) : (
         <Swipeable
           renderRightActions={() => renderRightActions(item.id)}
-          enabled={!isMultiSelectMode}
+          enabled={!isMultiSelectActive}
         >
           <TouchableOpacity
             style={[
               styles.playerItem,
               selectedPlayerIds.includes(item.id) && styles.selectedPlayerItem
             ]}
-            onPress={() => isMultiSelectMode ? togglePlayerSelection(item.id) : startEditing(item.id, item.name)}
-            onLongPress={() => handleLongPress(item.id)}
+            onPress={() => isMultiSelectActive ? togglePlayerSelection(item.id) : startEditing(item.id, item.name)}
+            onLongPress={() => handlePlayerLongPress(item)}
             delayLongPress={300}
           >
-            {isMultiSelectMode && (
+            {isMultiSelectActive && (
               <View style={styles.checkboxContainer}>
                 <View style={[
                   styles.checkbox,
@@ -386,7 +428,7 @@ const PlayerScreen = ({ navigation }) => {
               </Text>
             </View>
             
-            {!isMultiSelectMode && (
+            {!isMultiSelectActive && (
               <MaterialIcons 
                 name="chevron-right" 
                 size={24} 
@@ -415,7 +457,7 @@ const PlayerScreen = ({ navigation }) => {
               onPress={toggleMultiSelectMode}
             >
               <Text style={styles.multiSelectText}>
-                {isMultiSelectMode ? 'Cancel' : 'Select'}
+                {isMultiSelectActive ? 'Cancel' : 'Select'}
               </Text>
             </TouchableOpacity>
           )}
@@ -494,7 +536,7 @@ const PlayerScreen = ({ navigation }) => {
         )}
 
         {/* Bulk actions bar when in multi-select mode */}
-        {isMultiSelectMode && players.length > 0 && (
+        {isMultiSelectActive && players.length > 0 && (
           <View style={styles.bulkActionsBar}>
             <Text style={styles.selectedCountText}>
               {selectedPlayerIds.length} selected
@@ -824,13 +866,16 @@ const styles = StyleSheet.create({
   },
   swipeableActions: {
     flexDirection: 'row',
-    width: 120,
+    width: 180,
     justifyContent: 'space-between',
   },
   swipeableButton: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  analyticsButton: {
+    backgroundColor: '#9B59B6',
   },
   editButton: {
     backgroundColor: '#3498DB',

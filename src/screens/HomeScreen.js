@@ -1,21 +1,22 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { 
   View, 
   Text, 
   StyleSheet, 
   TouchableOpacity, 
-  Image, 
   ScrollView,
   Modal,
   Alert,
   SafeAreaView,
   StatusBar,
-  Dimensions
+  Dimensions,
+  RefreshControl
 } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { startNewSession, resetSession } from '../store/settlementSlice';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
+import analyticsUtils from '../utils/analyticsUtils';
 
 const { width } = Dimensions.get('window');
 
@@ -25,6 +26,33 @@ const HomeScreen = ({ navigation }) => {
   const { sessionId, balances, history } = useSelector(state => state.settlements);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [recentSessions, setRecentSessions] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Get top player by winnings
+  const getTopPlayer = (players, history) => {
+    if (players.length === 0 || history.length === 0) return null;
+    
+    const rankings = analyticsUtils.getPlayerRankings(players, history);
+    if (rankings.length > 0) {
+      return rankings[0]; // First player is the top player by winnings
+    }
+    
+    return null;
+  };
+
+  // Handle pull-to-refresh
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    
+    // Simulate refresh by waiting for a bit
+    setTimeout(() => {
+      // You could load updated data here if needed
+      if (history && history.length > 0) {
+        setRecentSessions(history.slice(-3).reverse());
+      }
+      setRefreshing(false);
+    }, 1000);
+  }, [history]);
 
   useEffect(() => {
     // Get the 3 most recent sessions for the quick view section
@@ -122,6 +150,31 @@ const HomeScreen = ({ navigation }) => {
     const numBalance = typeof balance === 'string' ? parseFloat(balance) || 0 : balance || 0;
     return numBalance > 0;
   };
+  
+  // Get player initials
+  const getInitials = (name) => {
+    return name
+      .split(' ')
+      .map(part => part.charAt(0))
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
+  };
+  
+  // Get random color
+  const getRandomColor = () => {
+    const colors = [
+      '#3498DB', // Blue
+      '#2ECC71', // Green
+      '#E74C3C', // Red
+      '#9B59B6', // Purple
+      '#F1C40F', // Yellow
+      '#1ABC9C', // Turquoise
+      '#D35400', // Orange
+      '#34495E', // Dark Blue
+    ];
+    return colors[Math.floor(Math.random() * colors.length)];
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -141,7 +194,18 @@ const HomeScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        <ScrollView 
+          style={styles.scrollView} 
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#3498DB']}
+              tintColor={'#3498DB'}
+            />
+          }
+        >
           <View style={styles.statsContainer}>
             <View style={styles.statBox}>
               <Text style={styles.statNumber}>{players.length}</Text>
@@ -186,6 +250,93 @@ const HomeScreen = ({ navigation }) => {
               </TouchableOpacity>
             </View>
           </View>
+          
+          {players.length > 0 && history.length > 0 && (
+            <View style={styles.analyticsContainer}>
+              <Text style={styles.sectionTitle}>Analytics</Text>
+              
+              <View style={styles.analyticsCard}>
+                <View style={styles.analyticsHeader}>
+                  <FontAwesome5 name="chart-line" size={20} color="#9B59B6" />
+                  <Text style={styles.analyticsTitle}>Performance Summary</Text>
+                </View>
+                
+                {/* Top player section */}
+                {(() => {
+                  const topPlayer = getTopPlayer(players, history);
+                  if (topPlayer) {
+                    const stats = topPlayer.stats;
+                    return (
+                      <View style={styles.topPlayerContainer}>
+                        <View style={styles.topPlayerHeader}>
+                          <Text style={styles.topPlayerTitle}>Top Player</Text>
+                          <TouchableOpacity
+                            onPress={() => navigation.navigate('PlayerAnalytics', { player: topPlayer })}
+                          >
+                            <Text style={styles.viewDetailsText}>View Details</Text>
+                          </TouchableOpacity>
+                        </View>
+                        
+                        <View style={styles.topPlayerInfo}>
+                          <View 
+                            style={[
+                              styles.topPlayerAvatar, 
+                              { backgroundColor: topPlayer.avatarColor || getRandomColor() }
+                            ]}
+                          >
+                            <Text style={styles.topPlayerAvatarText}>
+                              {getInitials(topPlayer.name)}
+                            </Text>
+                          </View>
+                          
+                          <View style={styles.topPlayerStats}>
+                            <Text style={styles.topPlayerName}>{topPlayer.name}</Text>
+                            <Text style={styles.topPlayerWinnings}>
+                              Net: ${stats.netWinnings.toFixed(2)}
+                            </Text>
+                            <Text style={styles.topPlayerRecord}>
+                              Record: {stats.winCount}W - {stats.lossCount}L ({Math.round(stats.winRate)}%)
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                    );
+                  }
+                  return null;
+                })()}
+                
+                {/* Session stats overview */}
+                <View style={styles.sessionStatsContainer}>
+                  <View style={styles.sessionStatItem}>
+                    <Text style={styles.sessionStatNumber}>{history.length}</Text>
+                    <Text style={styles.sessionStatLabel}>Total Sessions</Text>
+                  </View>
+                  
+                  <View style={styles.sessionStatItem}>
+                    <Text style={styles.sessionStatNumber}>
+                      {analyticsUtils.getSessionStats(history, players).averagePlayersPerSession.toFixed(1)}
+                    </Text>
+                    <Text style={styles.sessionStatLabel}>Avg. Players</Text>
+                  </View>
+                  
+                  <View style={styles.sessionStatItem}>
+                    <Text style={styles.sessionStatNumber}>
+                      ${analyticsUtils.getSessionStats(history, players).avgSettlementAmount.toFixed(0)}
+                    </Text>
+                    <Text style={styles.sessionStatLabel}>Avg. Transaction</Text>
+                  </View>
+                </View>
+                
+                <TouchableOpacity
+                  style={styles.viewAllAnalyticsButton}
+                  onPress={() => navigation.navigate('Players')}
+                >
+                  <Text style={styles.viewAllAnalyticsText}>View Player Analytics</Text>
+                  <MaterialIcons name="arrow-forward" size={16} color="#9B59B6" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
 
           {recentSessions.length > 0 && (
             <View style={styles.recentContainer}>
@@ -233,6 +384,14 @@ const HomeScreen = ({ navigation }) => {
                       </Text>
                     )}
                   </View>
+                  
+                  <TouchableOpacity 
+                    style={styles.viewSessionButton}
+                    onPress={() => navigation.navigate('SessionShare', { session })}
+                  >
+                    <MaterialIcons name="share" size={16} color="#3498DB" />
+                    <Text style={styles.viewSessionButtonText}>Share Session</Text>
+                  </TouchableOpacity>
                 </TouchableOpacity>
               ))}
               
@@ -377,6 +536,121 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginLeft: 15,
   },
+  analyticsContainer: {
+    marginTop: 20,
+    paddingHorizontal: 20,
+  },
+  analyticsCard: {
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  analyticsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  analyticsTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    marginLeft: 10,
+  },
+  topPlayerContainer: {
+    marginBottom: 15,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  topPlayerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  topPlayerTitle: {
+    fontSize: 14,
+    color: '#7F8C8D',
+  },
+  viewDetailsText: {
+    fontSize: 14,
+    color: '#9B59B6',
+  },
+  topPlayerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  topPlayerAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  topPlayerAvatarText: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  topPlayerStats: {
+    flex: 1,
+  },
+  topPlayerName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    marginBottom: 3,
+  },
+  topPlayerWinnings: {
+    fontSize: 15,
+    color: '#2ECC71',
+    fontWeight: '600',
+    marginBottom: 3,
+  },
+  topPlayerRecord: {
+    fontSize: 14,
+    color: '#7F8C8D',
+  },
+  sessionStatsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 15,
+  },
+  sessionStatItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  sessionStatNumber: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+  },
+  sessionStatLabel: {
+    fontSize: 12,
+    color: '#7F8C8D',
+    marginTop: 5,
+  },
+  viewAllAnalyticsButton: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  viewAllAnalyticsText: {
+    fontSize: 14,
+    color: '#9B59B6',
+    fontWeight: '600',
+    marginRight: 5,
+  },
   recentContainer: {
     marginTop: 20,
     paddingHorizontal: 20,
@@ -420,7 +694,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 5,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F4F8',
+    borderBottomColor: '#F0F0F0',
   },
   playerName: {
     fontSize: 15,
@@ -442,6 +716,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     fontStyle: 'italic',
+  },
+  viewSessionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    marginTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  viewSessionButtonText: {
+    color: '#3498DB',
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 5,
   },
   viewAllButton: {
     padding: 15,

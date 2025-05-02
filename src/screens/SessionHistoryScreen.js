@@ -185,34 +185,7 @@ const SessionHistoryScreen = ({ navigation }) => {
   };
 
   const handleShareSession = async (session) => {
-    try {
-      const date = new Date(session.date).toLocaleDateString();
-      let message = `Poker Session: ${date}\n\n`;
-      
-      // Add balances
-      message += 'Final Balances:\n';
-      Object.entries(session.balances).forEach(([playerId, balance]) => {
-        const numBalance = getNumericBalance(balance);
-        message += `${getPlayerName(playerId)}: $${numBalance.toFixed(2)}\n`;
-      });
-      
-      // Add settlements
-      message += '\nSettlements:\n';
-      if (session.settlements.length > 0) {
-        session.settlements.forEach(settlement => {
-          message += `${getPlayerName(settlement.from)} pays ${getPlayerName(settlement.to)} $${settlement.amount.toFixed(2)}\n`;
-        });
-      } else {
-        message += 'No settlements needed\n';
-      }
-      
-      await Share.share({
-        message,
-        title: `Poker Session: ${date}`,
-      });
-    } catch (error) {
-      Alert.alert('Error', 'Failed to share session details');
-    }
+    navigation.navigate('SessionShare', { session });
   };
   
   const handleDeleteSession = (sessionId) => {
@@ -318,7 +291,7 @@ const SessionHistoryScreen = ({ navigation }) => {
                   [
                     { 
                       text: 'Share', 
-                      onPress: () => handleShareSession(item),
+                      onPress: () => navigation.navigate('SessionShare', { session: item }),
                       style: 'default' 
                     },
                     { 
@@ -667,7 +640,10 @@ const SessionHistoryScreen = ({ navigation }) => {
                 
                 <TouchableOpacity
                   style={styles.shareButton}
-                  onPress={() => handleShareSession(selectedSession)}
+                  onPress={() => {
+                    setModalVisible(false);
+                    navigation.navigate('SessionShare', { session: selectedSession });
+                  }}
                 >
                   <MaterialIcons name="share" size={20} color="white" />
                   <Text style={styles.shareButtonText}>Share Session Details</Text>
@@ -944,174 +920,174 @@ const styles = StyleSheet.create({
     padding: 30,
     marginTop: 50,
   },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#7F8C8D',
-    marginTop: 15,
-  },
-  emptySubText: {
-    fontSize: 14,
-    color: '#95A5A6',
-    textAlign: 'center',
-    marginTop: 10,
-    marginBottom: 30,
-  },
-  startSessionButton: {
-    backgroundColor: '#3498DB',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-  },
-  startSessionText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 15,
-    fontSize: 16,
-    color: '#7F8C8D',
-  },
-  // Modal styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: 'white',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '80%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EAEAEA',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-  },
-  closeButton: {
-    padding: 5,
-  },
-  modalDate: {
-    fontSize: 16,
-    color: '#7F8C8D',
-    textAlign: 'center',
-    marginTop: 5,
-    marginBottom: 15,
-  },
-  modalSection: {
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EAEAEA',
-  },
-  modalSectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    marginBottom: 15,
-  },
-  balanceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F4F8',
-  },
-  playerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  modalPlayerName: {
-    fontSize: 16,
-    color: '#2C3E50',
-  },
-  modalBalance: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  positiveBalance: {
-    color: '#2ECC71',
-  },
-  negativeBalance: {
-    color: '#E74C3C',
-  },
-  neutralBalance: {
-    color: '#7F8C8D',
-  },
-  settlementRow: {
-    flexDirection: 'row',
-    marginBottom: 15,
-  },
-  settlementNumber: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#3498DB',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  settlementNumberText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  settlementDetails: {
-    flex: 1,
-    backgroundColor: '#F9F9F9',
-    borderRadius: 8,
-    padding: 10,
-  },
-  modalAmount: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    textAlign: 'right',
-    marginTop: 8,
-  },
-  noSettlementsModalContainer: {
-    padding: 20,
-    alignItems: 'center',
-    backgroundColor: '#F9F9F9',
-    borderRadius: 8,
-  },
-  noSettlementsModalText: {
-    fontSize: 16,
-    color: '#7F8C8D',
-    fontStyle: 'italic',
-    textAlign: 'center',
-  },
-  shareButton: {
-    flexDirection: 'row',
-    backgroundColor: '#3498DB',
-    marginHorizontal: 20,
-    marginVertical: 20,
-    padding: 15,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  shareButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginLeft: 10,
-  }
+emptyText: {
+  fontSize: 18,
+  fontWeight: 'bold',
+  color: '#7F8C8D',
+  marginTop: 15,
+},
+emptySubText: {
+  fontSize: 14,
+  color: '#95A5A6',
+  textAlign: 'center',
+  marginTop: 10,
+  marginBottom: 30,
+},
+startSessionButton: {
+  backgroundColor: '#3498DB',
+  paddingVertical: 12,
+  paddingHorizontal: 20,
+  borderRadius: 8,
+},
+startSessionText: {
+  color: 'white',
+  fontSize: 16,
+  fontWeight: 'bold',
+},
+loadingContainer: {
+  flex: 1,
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+loadingText: {
+  marginTop: 15,
+  fontSize: 16,
+  color: '#7F8C8D',
+},
+// Modal styles
+modalOverlay: {
+  flex: 1,
+  backgroundColor: 'rgba(0,0,0,0.5)',
+  justifyContent: 'flex-end',
+},
+modalContent: {
+  backgroundColor: 'white',
+  borderTopLeftRadius: 20,
+  borderTopRightRadius: 20,
+  maxHeight: '80%',
+},
+modalHeader: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  padding: 20,
+  borderBottomWidth: 1,
+  borderBottomColor: '#EAEAEA',
+},
+modalTitle: {
+  fontSize: 18,
+  fontWeight: 'bold',
+  color: '#2C3E50',
+},
+closeButton: {
+  padding: 5,
+},
+modalDate: {
+  fontSize: 16,
+  color: '#7F8C8D',
+  textAlign: 'center',
+  marginTop: 5,
+  marginBottom: 15,
+},
+modalSection: {
+  padding: 20,
+  borderBottomWidth: 1,
+  borderBottomColor: '#EAEAEA',
+},
+modalSectionTitle: {
+  fontSize: 16,
+  fontWeight: 'bold',
+  color: '#2C3E50',
+  marginBottom: 15,
+},
+balanceRow: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  paddingVertical: 8,
+  borderBottomWidth: 1,
+  borderBottomColor: '#F0F4F8',
+},
+playerRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+},
+modalPlayerName: {
+  fontSize: 16,
+  color: '#2C3E50',
+},
+modalBalance: {
+  fontSize: 16,
+  fontWeight: 'bold',
+},
+positiveBalance: {
+  color: '#2ECC71',
+},
+negativeBalance: {
+  color: '#E74C3C',
+},
+neutralBalance: {
+  color: '#7F8C8D',
+},
+settlementRow: {
+  flexDirection: 'row',
+  marginBottom: 15,
+},
+settlementNumber: {
+  width: 24,
+  height: 24,
+  borderRadius: 12,
+  backgroundColor: '#3498DB',
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginRight: 10,
+},
+settlementNumberText: {
+  color: 'white',
+  fontSize: 12,
+  fontWeight: 'bold',
+},
+settlementDetails: {
+  flex: 1,
+  backgroundColor: '#F9F9F9',
+  borderRadius: 8,
+  padding: 10,
+},
+modalAmount: {
+  fontSize: 16,
+  fontWeight: 'bold',
+  color: '#2C3E50',
+  textAlign: 'right',
+  marginTop: 8,
+},
+noSettlementsModalContainer: {
+  padding: 20,
+  alignItems: 'center',
+  backgroundColor: '#F9F9F9',
+  borderRadius: 8,
+},
+noSettlementsModalText: {
+  fontSize: 16,
+  color: '#7F8C8D',
+  fontStyle: 'italic',
+  textAlign: 'center',
+},
+shareButton: {
+  flexDirection: 'row',
+  backgroundColor: '#3498DB',
+  marginHorizontal: 20,
+  marginVertical: 20,
+  padding: 15,
+  borderRadius: 8,
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+shareButtonText: {
+  color: 'white',
+  fontSize: 16,
+  fontWeight: 'bold',
+  marginLeft: 10,
+}
 });
 
 export default SessionHistoryScreen;

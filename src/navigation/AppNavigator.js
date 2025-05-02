@@ -8,6 +8,8 @@ import HomeScreen from '../screens/HomeScreen';
 import PlayerScreen from '../screens/PlayerScreen';
 import SettlementScreen from '../screens/SettlementScreen';
 import SessionHistoryScreen from '../screens/SessionHistoryScreen';
+import PlayerAnalyticsScreen from '../screens/PlayerAnalyticsScreen';
+import SessionShareScreen from '../screens/SessionShareScreen';
 
 // Simple header logo component
 const HeaderLogo = () => (
@@ -70,6 +72,24 @@ const AppNavigator = () => {
         name="History" 
         component={SessionHistoryScreen} 
         options={{ title: 'Session History' }}
+      />
+      
+      <Stack.Screen 
+        name="PlayerAnalytics" 
+        component={PlayerAnalyticsScreen} 
+        options={{ 
+          title: 'Player Analytics',
+          headerShown: false // We'll use a custom header in the component
+        }}
+      />
+      
+      <Stack.Screen 
+        name="SessionShare" 
+        component={SessionShareScreen} 
+        options={{ 
+          title: 'Share Session',
+          headerShown: false // We'll use a custom header in the component
+        }}
       />
     </Stack.Navigator>
   );
